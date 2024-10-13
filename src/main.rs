@@ -1,24 +1,27 @@
+mod tests;
+
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
-use std::process::Command;
+use std::process::{Command, exit};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use chrono::prelude::*;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct ServiceConfig {
     name: String,
     active_text: String,
     inactive_text: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Config {
     debug: bool,
     sleep: u64,
     services: Vec<ServiceConfig>,
+    log_file: String,
 }
 
 #[derive(Serialize)]
@@ -30,10 +33,34 @@ struct LogEntry {
 }
 
 fn read_config(file_path: &str) -> Result<Config, io::Error> {
+    if !std::path::Path::new(file_path).exists() {
+        let default_config = Config {
+            debug: true,
+            sleep: 2,
+            services: vec![
+                ServiceConfig {
+                    name: "fake_service".to_string(),
+                    active_text: "online".to_string(),
+                    inactive_text: "down".to_string(),
+                }
+            ],
+            log_file: "error.log".to_string(), // Set default log file
+        };
+        let default_config_json = serde_json::to_string_pretty(&default_config).expect("Failed to serialize default config");
+        let mut file = File::create(file_path)?;
+        file.write_all(default_config_json.as_bytes())?;
+    }
+
     let mut file = File::open(file_path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    let config: Config = serde_json::from_str(&contents)?;
+    let mut config: Config = serde_json::from_str(&contents)?;
+
+    // Set default log file if not present
+    if config.log_file.is_empty() {
+        config.log_file = "error.log".to_string();
+    }
+
     Ok(config)
 }
 
@@ -66,11 +93,11 @@ fn check_service_status(service: &ServiceConfig, debug: bool) -> Result<String, 
     }
 }
 
-fn log_error_to_file(error: &str, datetime_str: &str) {
+fn log_error_to_file(error: &str, datetime_str: &str, log_file: &str) {
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open("error.log")
+        .open(log_file)
         .expect("Failed to open error log file");
 
     let start_time = SystemTime::now();
@@ -81,7 +108,13 @@ fn log_error_to_file(error: &str, datetime_str: &str) {
 }
 
 fn main() {
-    let config = read_config("config.json").expect("Failed to read config file");
+    let config = match read_config("config.json") {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("Failed to read config file: {}", err);
+            exit(1);
+        }
+    };
 
     loop {
         let start_time = SystemTime::now();
@@ -96,7 +129,7 @@ fn main() {
                     if config.debug {
                         eprintln!("Error: {}", err);
                     }
-                    log_error_to_file(&err, &datetime_str);
+                    log_error_to_file(&err, &datetime_str, &config.log_file);
                     "error".to_string()
                 }
             };
