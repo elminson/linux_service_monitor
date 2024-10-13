@@ -1,5 +1,5 @@
 {
-  "debug": true,
+  "debug": false,
   "sleep": 2,
   "log_file": "error.log",
   "services": [
@@ -22,6 +22,16 @@
       "name": "fake_service",
       "active_text": "online",
       "inactive_text": "down"
+    },
+    {
+      "name": "php@7.1",
+      "active_text": "started",
+      "inactive_text": "none"
+    },
+    {
+      "name": "new_srevice",
+      "active_text": "started",
+      "inactive_text": "error"
     }
   ]
 }

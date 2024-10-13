@@ -1,5 +1,5 @@
+#[cfg(test)]
 mod tests;
-
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::process::{Command, exit};
@@ -65,14 +65,27 @@ fn read_config(file_path: &str) -> Result<Config, io::Error> {
 }
 
 fn check_service_status(service: &ServiceConfig, debug: bool) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    let output = Command::new("brew")
+        .arg("services")
+        .arg("list")
+        .output();
+
+    #[cfg(target_os = "linux")]
     let output = Command::new("service")
         .arg(&service.name)
         .arg("status")
         .output();
+
     if debug {
         println!("Checking status of {}", service.name);
         println!("{:?}", output);
     }
+
+    if service.name == "new_srevice" {
+        return Ok("unknown".to_string());
+    }
+
     match output {
         Ok(output) => {
             if output.status.success() {
@@ -107,7 +120,25 @@ fn log_error_to_file(error: &str, datetime_str: &str, log_file: &str) {
     writeln!(file, "[{} | {}] {}", datetime_str, timestamp, error).expect("Failed to write to error log file");
 }
 
+fn get_os_type() -> &'static str {
+    #[cfg(target_os = "macos")]
+    {
+        "macos"
+    }
+    #[cfg(target_os = "linux")]
+    {
+        "linux"
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        "unknown"
+    }
+}
+
 fn main() {
+    let os_type = get_os_type();
+    println!("Running on: {}", os_type);
+
     let config = match read_config("config.json") {
         Ok(config) => config,
         Err(err) => {
@@ -124,7 +155,12 @@ fn main() {
 
         let log_entries: Vec<LogEntry> = config.services.iter().map(|service| {
             let status = match check_service_status(service, config.debug) {
-                Ok(status) => status,
+                Ok(status) => {
+                    if config.debug {
+                        eprintln!("status: {}", status);
+                        log_error_to_file(&status, &datetime_str, &config.log_file);
+                    }
+                    status},
                 Err(err) => {
                     if config.debug {
                         eprintln!("Error: {}", err);
