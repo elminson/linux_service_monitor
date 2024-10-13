@@ -4,6 +4,21 @@
   "log_file": "error.log",
   "services": [
     {
+      "name": "nginx",
+      "active_text": "is running",
+      "inactive_text": "is not running"
+    },
+    {
+      "name": "mariadb",
+      "active_text": "Uptime:",
+      "inactive_text": "MariaDB is stopped"
+    },
+    {
+      "name": "postgresql",
+      "active_text": "online",
+      "inactive_text": "down"
+    },
+    {
       "name": "fake_service",
       "active_text": "online",
       "inactive_text": "down"
