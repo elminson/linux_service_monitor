@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  rust_app:
+    image: rust:latest
+    container_name: rust_service_checker
+    build: .
+    volumes:
+      - .:/usr/src/myapp
+    working_dir: /usr/src/myapp
+    command: cargo run
+    networks:
+      - service_network
+    privileged: true  # Required to use service command inside the container
+
+networks:
+  service_network:
+    driver: bridge
