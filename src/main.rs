@@ -1,5 +1,9 @@
 #[cfg(test)]
 mod tests;
+mod server;
+use std::sync::Mutex;
+use actix_web::web;
+
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::process::{Command, exit};
@@ -136,6 +140,11 @@ fn get_os_type() -> &'static str {
 }
 
 fn main() {
+
+    // # notification module to slack
+    // create a service to show in a website (maybe js to load the data)
+    // return this as a json service to be consumed by the website
+    // create a service to show in a website (maybe js to load the data)
     let os_type = get_os_type();
     println!("Running on: {}", os_type);
 
